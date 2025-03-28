@@ -1,0 +1,58 @@
+name: Release from tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  artifacts:
+    name: Generate artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Generate artifacts
+        env:
+          BUILD_TAG: ${{ github.ref_name }}
+        run: dev/gen-artifacts.sh
+
+      - name: Upload to GitHub Packages
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Define package info
+            const packageName = 'xmtpd-artifacts';
+            const version = context.ref.replace('refs/tags/v', '');
+            const artifactsDir = './artifacts'; // Change to your artifacts directory
+
+            // Get list of artifacts
+            const files = fs.readdirSync(artifactsDir);
+
+            // Upload each artifact
+            for (const file of files) {
+              const filePath = path.join(artifactsDir, file);
+              const fileStats = fs.statSync(filePath);
+              
+              if (fileStats.isFile()) {
+                console.log(`Uploading ${file} to GitHub Packages...`);
+                
+                const fileContent = fs.readFileSync(filePath);
+                
+                await github.rest.packages.uploadPackageFile({
+                  package_type: 'generic',
+                  package_name: packageName,
+                  package_version: version,
+                  file_name: file,
+                  data: fileContent
+                });
+                
+                console.log(`Successfully uploaded ${file}`);
+              }
+            }
