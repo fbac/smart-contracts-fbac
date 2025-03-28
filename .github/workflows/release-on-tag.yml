@@ -25,7 +25,11 @@ jobs:
           BUILD_TAG: ${{ github.ref_name }}
         run: dev/gen-artifacts.sh
 
-      - uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: xmtpd-contracts
-          path: ./artifacts
+          files: ./artifacts/**/*
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
